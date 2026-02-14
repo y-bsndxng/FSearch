@@ -61,6 +61,7 @@ fn default_root() -> PathBuf {
 enum Msg {
     Batch(Vec<String>),
     Done,
+    #[allow(dead_code)]
     Error(String),
 }
 
