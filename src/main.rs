@@ -2,13 +2,15 @@ use anyhow::Result;
 use clap::Parser;
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use crossterm::{
-    cursor::{Hide, MoveTo, Show},
+    cursor::{Hide, MoveTo, Show, MoveToNextLine},
     event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers},
     terminal::{
         disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen,
         LeaveAlternateScreen,
     },
     ExecutableCommand,
+    style::Print,
+    queue,
 };
 use ignore::{WalkBuilder, WalkState};
 use std::{
@@ -137,21 +139,27 @@ fn render(
     paths: &[String],
 ) -> Result<()> {
     let mut out = stdout();
-    out.execute(MoveTo(0, 0))?;
-    out.execute(Clear(ClearType::All))?;
 
-    write!(
+    queue!(out, MoveTo(0, 0), Clear(ClearType::All))?;
+
+    queue!(
         out,
-        "Scan: {} items  [{}]   (ESC/Ctrl+C: quit)\r\n",
-        scanned,
-        if done { "DONE" } else { "SCANNING" }
+        Print(format!(
+            "Scan: {} items  [{}]   (ESC/Ctrl+C: quit)",
+            scanned,
+            if done { "DONE" } else { "SCANNING" }
+        )),
+        MoveToNextLine(1),
+        Print(format!("Query: {}", query)),
+        MoveToNextLine(1),
+        Print(format!("Matches: {}  (showing up to {})", matches.len(), limit)),
+        MoveToNextLine(1),
+        Print("----------------------------------------"),
+        MoveToNextLine(1),
     )?;
-    write!(out, "Query: {}\r\n", query)?;
-    write!(out, "Matches: {}  (showing up to {})\r\n", matches.len(), limit)?;
-    write!(out, "----------------------------------------\r\n")?;
 
     for &idx in matches.iter().take(limit) {
-        write!(out, "{}\r\n", paths[idx])?;
+        queue!(out, Print(&paths[idx]), MoveToNextLine(1))?;
     }
 
     out.flush()?;
