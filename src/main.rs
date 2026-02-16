@@ -3,7 +3,7 @@ use clap::Parser;
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use crossterm::{
     cursor::{Hide, MoveTo, Show, MoveToNextLine},
-    event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers},
+    event::{poll, read, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     terminal::{
         disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen,
         LeaveAlternateScreen,
@@ -203,6 +203,10 @@ fn main() -> Result<()> {
             // 2) 入力待ち（短いタイムアウトでpoll）
             if poll(Duration::from_millis(50))? {
                 if let Event::Key(k) = read()? {
+                    // Windowsの二重イベント対策：Pressだけ処理
+                    if k.kind != KeyEventKind::Press {
+                        continue;
+                    }
                     if should_quit(k) {
                         break;
                     }
